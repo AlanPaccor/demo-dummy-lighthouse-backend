@@ -21,29 +21,24 @@ public class DemoBackendController {
     @Autowired
     private LighthouseService lighthouseService;
 
-    @GetMapping("/health")
-    public ResponseEntity<Map<String, String>> health() {
-        return ResponseEntity.ok(Map.of("status", "ok", "service", "demo-backend"));
-    }
-
     @PostMapping("/query")
     public ResponseEntity<Map<String, Object>> executeQuery(@RequestBody Map<String, String> request) {
         try {
             String prompt = request.get("prompt");
-            String databaseConnectionId = request.get("databaseConnectionId");
+            String databaseConnectionId = request.get("databaseConnectionId"); // For AI context only
 
             if (prompt == null || prompt.trim().isEmpty()) {
                 return ResponseEntity.badRequest()
                         .body(Map.of("error", "Prompt is required", "success", false));
             }
 
-            // Call AI API with database context
+            // Call AI with database context (for better responses)
             AIResponse aiResponse = aiService.callAI(prompt, databaseConnectionId);
 
-            // Send trace to main Lighthouse backend (async, non-blocking)
+            // Send simple trace to Lighthouse (no hallucination detection)
             lighthouseService.sendTraceToLighthouse(prompt, aiResponse);
 
-            // Return response to demo frontend
+            // Return response to frontend
             Map<String, Object> response = new HashMap<>();
             response.put("response", aiResponse.getText());
             response.put("success", true);
@@ -51,9 +46,9 @@ public class DemoBackendController {
             response.put("costUsd", aiResponse.getCostUsd());
             response.put("latencyMs", aiResponse.getLatencyMs());
             response.put("provider", aiResponse.getProvider());
+            // NO confidenceScore - that's only in the dashboard
 
             return ResponseEntity.ok(response);
-
         } catch (Exception e) {
             Map<String, Object> errorResponse = new HashMap<>();
             errorResponse.put("error", e.getMessage());

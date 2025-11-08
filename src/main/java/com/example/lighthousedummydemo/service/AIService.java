@@ -69,7 +69,10 @@ public class AIService {
             long latencyMs = System.currentTimeMillis() - startTime;
             int tokensUsed = estimateTokens(enhancedPrompt, textResponse);
 
-            return new AIResponse(textResponse, tokensUsed, 0.0, latencyMs, "gemini");
+            // Calculate cost based on tokens and provider
+            double costUsd = calculateCost(tokensUsed, "gemini");
+
+            return new AIResponse(textResponse, tokensUsed, costUsd, latencyMs, "gemini");
 
         } catch (Exception e) {
             long latencyMs = System.currentTimeMillis() - startTime;
@@ -125,5 +128,33 @@ public class AIService {
 
     private int estimateTokens(String prompt, String response) {
         return (int) Math.ceil((prompt.length() + response.length()) / 4.0);
+    }
+
+    /**
+     * Calculate cost in USD based on tokens and provider
+     * Gemini 2.0 Flash pricing (as of 2024):
+     * - Input: $0.075 per 1M tokens
+     * - Output: $0.30 per 1M tokens
+     */
+    private double calculateCost(int totalTokens, String provider) {
+        if (totalTokens <= 0) {
+            return 0.0;
+        }
+
+        // For Gemini pricing
+        if ("gemini".equalsIgnoreCase(provider)) {
+            // Estimate: 70% input tokens, 30% output tokens (typical ratio)
+            int inputTokens = (int) (totalTokens * 0.7);
+            int outputTokens = totalTokens - inputTokens;
+
+            // Gemini 2.0 Flash pricing
+            double inputCost = (inputTokens / 1_000_000.0) * 0.075;
+            double outputCost = (outputTokens / 1_000_000.0) * 0.30;
+
+            return inputCost + outputCost;
+        }
+
+        // Default fallback (very rough estimate)
+        return (totalTokens / 1_000_000.0) * 0.10; // $0.10 per 1M tokens average
     }
 }

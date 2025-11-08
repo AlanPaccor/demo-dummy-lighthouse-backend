@@ -28,9 +28,11 @@ public class LighthouseService {
 
     private final Gson gson = new Gson();
 
+    /**
+     * Send simple trace to Lighthouse (no hallucination detection)
+     */
     public void sendTraceToLighthouse(String prompt, AIResponse aiResponse) {
         try {
-            // Build trace data
             Map<String, Object> traceData = new HashMap<>();
             traceData.put("prompt", prompt);
             traceData.put("response", aiResponse.getText());
@@ -39,7 +41,6 @@ public class LighthouseService {
             traceData.put("latencyMs", aiResponse.getLatencyMs());
             traceData.put("provider", aiResponse.getProvider());
 
-            // Create HTTP request
             HttpRequest request = HttpRequest.newBuilder()
                     .uri(URI.create(lighthouseApiUrl))
                     .header("Content-Type", "application/json")
@@ -48,25 +49,23 @@ public class LighthouseService {
                     .POST(HttpRequest.BodyPublishers.ofString(gson.toJson(traceData)))
                     .build();
 
-            // Send async (don't block the main request)
+            // Send async (don't block)
             httpClient.sendAsync(request, HttpResponse.BodyHandlers.ofString())
                     .thenAccept(response -> {
                         if (response.statusCode() == 200 || response.statusCode() == 201) {
-                            System.out.println("✅ Trace sent to Lighthouse successfully");
+                            System.out.println("✅ Trace sent to Lighthouse");
                         } else {
-                            System.err.println("❌ Lighthouse trace failed: " + response.statusCode() +
-                                    " - " + response.body());
+                            System.err.println("⚠️ Lighthouse trace failed: " + response.statusCode());
+                            System.err.println("Response: " + response.body());
                         }
                     })
                     .exceptionally(e -> {
                         System.err.println("❌ Lighthouse trace error: " + e.getMessage());
-                        e.printStackTrace();
                         return null;
                     });
 
         } catch (Exception e) {
             System.err.println("❌ Failed to send trace to Lighthouse: " + e.getMessage());
-            e.printStackTrace();
         }
     }
 }
